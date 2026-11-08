@@ -486,9 +486,12 @@ IFmaBase* FmaOpsCommand::opFmaStrike(FmaOpsCommand *cmd, const QString &, const 
     return t;
 }
 
-IFmaBase* FmaOpsCommand::opFmaLongDiv(FmaOpsCommand *cmd, const QString &, const QString &)
+IFmaBase* FmaOpsCommand::opFmaLongDiv(FmaOpsCommand *cmd, const QString &, const QString &subType)
 {
-    FmaEnclose* t = new FmaEnclose(int(FmaEnclose::LongDiv));
+    // longdiv_01：普通除式（无商位）；longdiv_02：长除法（顶部带商位）。
+    // subType 是 onOp 拆分后的 "01"/"02"。
+    const bool withQuotient = (subType.toInt() >= 2);
+    FmaEnclose* t = new FmaEnclose(int(FmaEnclose::LongDiv), nullptr, withQuotient);
     //cmd->fma = t;
     FmaRow* curRow = cmd->doc->math.activeRow(true);
     cmd->editOps = curRow->putToActive(t);

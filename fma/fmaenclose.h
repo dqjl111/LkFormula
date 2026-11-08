@@ -27,7 +27,8 @@ public:
     };
 
 
-    FmaEnclose(int _notation=LongDiv, IFmaBase* child = nullptr);
+    FmaEnclose(int _notation=LongDiv, IFmaBase* child = nullptr,
+               bool withQuotient = true);
     FmaEnclose(const QCborMap& cborMap);
 
     virtual FmaType type() override;

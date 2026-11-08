@@ -1,11 +1,21 @@
 #include "fmaenclose.h"
+#include "fmarow.h"
 #include <QPainter>
 #include <QPaintEngine>
 #include "wmf/fmawmfpaintengine.h"
 
-FmaEnclose::FmaEnclose(int _notation, IFmaBase* child):FmaBuddyBase(child)
+FmaEnclose::FmaEnclose(int _notation, IFmaBase* child, bool withQuotient)
+    :FmaBuddyBase(child)
 {
     notation = _notation;
+
+    if(notation == LongDiv && withQuotient){
+        // 商位行：空行由 FmaRow::paint 画虚线框，可点击进入输入商。
+        FmaRow* quotient = new FmaRow;
+        quotient->parent = this;
+        children.append(quotient);
+        setLevelOffset(quotient, 0);
+    }
 }
 
 FmaEnclose::FmaEnclose(const QCborMap &cborMap):FmaBuddyBase(cborMap)
@@ -39,9 +49,17 @@ void FmaEnclose::paint(QPainter *painter)
     QPointF p1(rect.x()+rect.width()-thick, rect.y()+thick);
 
     if(notation == LongDiv){
-        painter->drawLine(p0, p1);
-        qreal xtrude = rect.width() -children[0]->fullWidth()-thick*4;
-        QRectF arcRect(rect.x()-xtrude, rect.y()+thick, xtrude*2, rect.height());
+        // 商位在顶部（children[1]），横线画在商位下方、被除数上方。
+        const qreal quotientH = (children.size() > 1) ? children[1]->fullHeight() : 0;
+        const qreal lineY = rect.y() + thick + quotientH;
+        painter->drawLine(QPointF(rect.x()+thick, lineY),
+                          QPointF(rect.x()+rect.width()-thick, lineY));
+
+        // 左侧弧线：只包住被除数部分（横线以下），
+        // 避免弧线在商位左上方多出一段。
+        const qreal xtrude = thick * 1.5;
+        QRectF arcRect(rect.x()-xtrude, lineY, xtrude*2,
+                       qMax(1.0, rect.bottom() - thick - lineY));
 
         if(painter->paintEngine()->type() >= QPaintEngine::User){
             FmaWmfPaintEngine* wmfPaintEngine = (FmaWmfPaintEngine*)(painter->paintEngine());
@@ -98,8 +116,17 @@ void FmaEnclose::calculatePos()
     qreal thick = lineThickness(3);
 
     if(notation == LongDiv){
+        const qreal quotientH = (children.size() > 1) ? children[1]->fullHeight() : 0;
+        if(children.size() > 1){
+            // 商位：顶部，宽度取商内容与被除数较宽者，避免内容溢出、横线过短。
+            const qreal quotientW = qMax(children[1]->fullWidth(), children[0]->fullWidth());
+            children[1]->rect.setWidth(quotientW);
+            children[1]->rect.setHeight(quotientH);
+            children[1]->rect.moveLeft(x + thick);
+            children[1]->rect.moveTop(y + thick);
+        }
         children[0]->rect.moveLeft(x+rect.width()-children[0]->fullWidth()-thick);
-        children[0]->rect.moveTop(y+thick);
+        children[0]->rect.moveTop(y + thick + quotientH);
     }else{
         if(notation & Left
                 || (notation & Horizontalstrike)
@@ -131,6 +158,9 @@ qreal FmaEnclose::upHeight()
     qreal upH = children[0]->upHeight();
     if(notation == LongDiv){
         upH+=lineThickness(3);
+        if(children.size() > 1){
+            upH += children[1]->fullHeight();  // 商位
+        }
     }else{
         if(notation & Top
                 || (notation & Verticalstrike)
@@ -220,9 +250,16 @@ void FmaEnclose::calculateSize()
     IFmaContainer::calculateSize();
 
     if(notation == LongDiv){
-        qreal baseHeight = children[0]->fullHeight() + lineThickness(3);
-        rect.setHeight(baseHeight + baseHeight*0.1);
-        rect.setWidth(children[0]->fullWidth() + baseHeight*0.5);
+        const qreal thick = lineThickness(3);
+        const qreal contentH = children[0]->fullHeight();
+        // 无商位时高度不再额外加一行，避免框线过长。
+        const qreal quotientH = (children.size() > 1) ? children[1]->fullHeight() : 0.0;
+        // 宽度取商位与被除数中较宽者，横线才能跟随内容变长。
+        const qreal contentW = (children.size() > 1)
+                ? qMax(children[0]->fullWidth(), children[1]->fullWidth())
+                : children[0]->fullWidth();
+        rect.setWidth(contentW + thick * 3);
+        rect.setHeight(quotientH + contentH + thick * 2);
     }else{
         qreal thick = lineThickness(3);
         qreal width = children[0]->fullWidth();
@@ -234,8 +271,10 @@ void FmaEnclose::calculateSize()
                 || (notation & Downdiagonalstrike)){
             width+=thick;
         }
-        if(notation & Right
-                || (notation & Horizontalstrike)
+        if(notation & Right){
+            // 右边线单独加大间距，避免框的右边线贴到内容上。
+            width += thick * 2.5;
+        }else if((notation & Horizontalstrike)
                 || (notation & Updiagonalstrike)
                 || (notation & Downdiagonalstrike)){
             width+=thick;
