@@ -184,7 +184,7 @@ QAXFACTORY_END()
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    app.setApplicationVersion(QStringLiteral("0.1"));
+    app.setApplicationVersion(QStringLiteral("0.1.2"));
     LkTheme::apply(&app, QStringLiteral("light"));
     LkTranslator::install();
 
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    app.setApplicationVersion(QStringLiteral("0.1"));
+    app.setApplicationVersion(QStringLiteral("0.1.2"));
     LkTheme::apply(&app, QStringLiteral("light"));
     LkTranslator::install();
 

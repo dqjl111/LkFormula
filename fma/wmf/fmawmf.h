@@ -405,8 +405,12 @@ public:
         void fromQFont(const QFont& font){
             QFontMetrics metrics = QFontMetrics( font);
 
-            height = metrics.height();
-            width = metrics.averageCharWidth();
+            // GDI lfHeight 负值表示 em 高度，与 Qt pixelSize 一致；
+            // 正值是含内部行距的字符单元高度，会让字体变小。
+            height = -qAbs(font.pixelSize());
+            // lfWidth 为 0 时 GDI 使用字体的自然宽度，
+            // 否则比例字体被强制为统一平均宽度，字距异常。
+            width = 0;
             weight = font.weight();
             escapement = 0;
             orientation = 0;

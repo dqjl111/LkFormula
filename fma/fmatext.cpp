@@ -592,7 +592,7 @@ bool FmaText::isInvisibleOperator() const
             || ttext == QString( QChar( 0x0B, 0x20 ) );
 }
 
-QRectF textSize(const QString& str, const QFontMetricsF& metrics){
+QRectF textSize(const QString& str, const QFontMetricsF& metrics, const QFont& font){
     QRectF ret;
     if(str.isEmpty()){
         QRectF rectT = metrics.boundingRect('x');  //
@@ -600,8 +600,9 @@ QRectF textSize(const QString& str, const QFontMetricsF& metrics){
         ret.setHeight(rectT.height());
     }else{
         QRectF rectT = metrics.boundingRect(str );
-        //ret.setWidth(rectT.width() + metrics.leftBearing(str[0]) + metrics.rightBearing(str[str.length()-1]));
-        ret.setWidth(rectT.width());
+        // 宽度用 horizontalAdvance（逐字符叠加），与 WMF 的 dx 间距数组使用
+        // 同一度量，保证 GDI 排版的元素总宽与布局一致，不出现元素间空隙。
+        ret.setWidth(metrics.horizontalAdvance(str));
         ret.setHeight(rectT.height());
     }
 
@@ -612,7 +613,7 @@ void FmaText::calculateSize()
 {
     QFontMetricsF metrics = QFontMetricsF( font() );
     QString ttext = searchText();
-    rect = textSize(ttext, metrics);
+    rect = textSize(ttext, metrics, font());
 }
 
 void FmaText::stretchSize()
@@ -761,10 +762,10 @@ void FmaText::paintSelect(QPainter *p)
         QRectF rectStart, rectEx;
         if(partSelectStartId < partSelectEndId){
             rectStart = metrics.boundingRect(text.mid(0, partSelectStartId));
-            rectEx = textSize(text.mid(partSelectStartId, partSelectEndId-partSelectStartId), metrics);
+            rectEx = textSize(text.mid(partSelectStartId, partSelectEndId-partSelectStartId), metrics, font());
         }else{
             rectStart = metrics.boundingRect(text.mid(0, partSelectEndId));
-            rectEx = textSize(text.mid(partSelectEndId, partSelectStartId-partSelectEndId), metrics);
+            rectEx = textSize(text.mid(partSelectEndId, partSelectStartId-partSelectEndId), metrics, font());
         }
 
         QRectF selectRect;
@@ -854,14 +855,14 @@ QRectF FmaText::textRect(int i)
             return  QRectF(rect.x(), rect.y(), 0, rect.height());
         }else{
             QFontMetricsF metrics = QFontMetricsF( font() );
-            QRectF rectT = metrics.boundingRect(t);
-            return  QRectF(rect.x(), rect.y(), rectT.width(), rect.height());
+            // 光标按字符 advance 定位；boundingRect 是墨迹范围，
+            // 斜体等字形的左右伸出会让光标偏离字符边界。
+            return  QRectF(rect.x(), rect.y(), metrics.horizontalAdvance(t), rect.height());
         }
     }
 
     QFontMetricsF metrics = QFontMetricsF( font() );
-    QRectF rectT = metrics.boundingRect(text.left(i) );
-    return  QRectF(rect.x(), rect.y(), rectT.width(), rect.height());
+    return  QRectF(rect.x(), rect.y(), metrics.horizontalAdvance(text.left(i)), rect.height());
 }
 
 QFont FmaText::font() const
@@ -1236,9 +1237,9 @@ bool FmaText::mouseClick(const QPointF &p)
 
     qreal startOffset = metrics.averageCharWidth()*0.5;
     for(int i=1; i<=text.size(); ++i){
-        t = metrics.boundingRect(text.left(i));
-        t.moveLeft(rect.x() + startOffset);
-        t.moveTop(rect.y());
+        // 命中判断与光标、布局使用同一 advance 度量，避免斜体墨迹范围偏差。
+        t = QRectF(rect.x() + startOffset, rect.y(),
+                   metrics.horizontalAdvance(text.left(i)), rect.height());
 
         if(t.contains(p)){
             m_activePos = i;

@@ -2,7 +2,11 @@
 #include <QVariant>
 #include <QtMath>
 #include <QIODevice>
+#include <QFile>
 #include <QPainterPath>
+#include <QTextLayout>
+#include <QTextLine>
+#include <QFontMetricsF>
 #include "util/lkutil.h"
 #include <codecvt>
 #include <locale>
@@ -814,6 +818,26 @@ void FmaWmfPaintEngine::metaExTextout(const QPointF &pt, const QTextItem &item)
         os << quint16(0x0000);
     }
     os.writeRawData(text.data(), text.length());
+
+    // 附加每个字符的横向间距数组（META_EXTTEXTOUT 标准可选字段），
+    // 让 GDI 按与 Qt 相同的 advance 排版。
+    // 用前缀绝对位置的差值，避免逐字符舍入误差累积导致尾部留白。
+    const QString str = item.text();
+    if(str.size() > 1 && text.length() == str.size()){
+        // dx 数组：GDI 按“字符位置 = 起点 + 前序 dx 累计”排版。
+        // 布局（FmaText::textSize）用含 letterSpacing 的 horizontalAdvance，
+        // 绘制管线的度量不含 letterSpacing，这里显式补上，保证元素总宽一致。
+        QFontMetricsF fm(item.font());
+        const qreal ls = (item.font().letterSpacingType() == QFont::AbsoluteSpacing)
+                ? item.font().letterSpacing() : 0.0;
+        long prevPos = 0;
+        for(int i = 1; i <= str.size(); ++i){
+            const long pos = mapX(qRound(fm.horizontalAdvance(str.left(i)) + i * ls));
+            os << qint16(qBound(-32768, int(pos - prevPos), 32767));
+            prevPos = pos;
+        }
+    }
+
     record->size = 3 + record->parameters.size()/2;
     helper.records.append(record);
 }
