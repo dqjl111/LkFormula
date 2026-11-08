@@ -16,6 +16,7 @@ public:
     virtual bool isText() override;
     virtual FmaType type() override;
     virtual void calculateSize() override;
+    virtual void stretchSize() override;
     virtual void paint( QPainter *painter) override;
     virtual void paintSelect(QPainter *painter) override;
 

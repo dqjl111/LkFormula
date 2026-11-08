@@ -7,8 +7,13 @@
 class FmaClipboard
 {
 public:
+    enum Format { Ole = 0, MathMl = 1, Tex = 2 };
+
     FmaClipboard();
     virtual ~FmaClipboard();
+
+    static int format();
+    static void setFormat(int format);
 
     const QMimeData *mimeData(QClipboard::Mode mode = QClipboard::Clipboard );
     void setMimeData(QMimeData *data, QClipboard::Mode mode = QClipboard::Clipboard);

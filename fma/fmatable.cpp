@@ -158,6 +158,38 @@ void FmaTable::calculatePos()
     }
 }
 
+bool FmaTable::mouseClick(const QPointF &p)
+{
+    if(!rect.contains(p)){
+        return false;
+    }
+
+    // 空单元格的 rect 只是中间的小方块，按最近单元格中心命中，
+    // 保证点击单元格区域任意位置都能进入对应单元格。
+    FmaRow *best = nullptr;
+    qreal bestDistance = -1;
+    for(IFmaBase *child : children){
+        if(!child){
+            continue;
+        }
+        const QPointF center = child->rect.center();
+        const qreal dx = center.x() - p.x();
+        const qreal dy = center.y() - p.y();
+        const qreal distance = dx * dx + dy * dy;
+        if(bestDistance < 0 || distance < bestDistance){
+            bestDistance = distance;
+            best = static_cast<FmaRow*>(child);
+        }
+    }
+
+    if(best){
+        setActiveChild(best);
+        best->mouseClick(p);
+        return true;
+    }
+    return false;
+}
+
 QCborMap FmaTable::toCbor(bool filterSelect)
 {
     QCborMap ret = IFmaContainer::toCbor(filterSelect);

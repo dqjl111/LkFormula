@@ -26,6 +26,7 @@ public:
     FmaRow* getCell(uint row, uint col);
 
     virtual bool moveCursor(QTextCursor::MoveOperation op) override;
+    virtual bool mouseClick(const QPointF& p) override;
 protected:
     unsigned int rowNum=0, colNum=0;
 };

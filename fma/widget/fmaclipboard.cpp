@@ -2,11 +2,24 @@
 #include <QApplication>
 #include <QMimeData>
 #include <QThread>
+#include <QSettings>
 #include "fma/fmamime.h"
 
 #include <wtsapi32.h>
 
 FmaClipboard FmaClipboard::instance;
+
+int FmaClipboard::format()
+{
+    QSettings settings(QStringLiteral("LkFormula"), QStringLiteral("LkFormula"));
+    return settings.value(QStringLiteral("ClipboardFormat"), 0).toInt();
+}
+
+void FmaClipboard::setFormat(int format)
+{
+    QSettings settings(QStringLiteral("LkFormula"), QStringLiteral("LkFormula"));
+    settings.setValue(QStringLiteral("ClipboardFormat"), format);
+}
 
 FmaClipboard::FmaClipboard()
 {
@@ -43,6 +56,14 @@ void FmaClipboard::setMimeData(QMimeData *data, QClipboard::Mode mode)
     #ifdef _WIN32
         if(data->hasFormat(FmaMime::fmaCbor)){
             if (mode != QClipboard::Clipboard){
+                return;
+            }
+
+            // 同时带文本（MathML/TeX）时交给 Qt 剪贴板：外部应用可读文本，
+            // 程序内仍可通过 fmaCbor 粘贴。
+            if(data->hasFormat(FmaMime::fmaMml) || !data->text().isEmpty()){
+                releasTransaData();
+                QApplication::clipboard()->setMimeData(data, mode);
                 return;
             }
 

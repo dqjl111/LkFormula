@@ -37,6 +37,16 @@ bool FmaRow::isRow()
     return true;
 }
 
+bool FmaRow::isStretchX()
+{
+    return false;
+}
+
+bool FmaRow::isStretchY()
+{
+    return false;
+}
+
 FmaType FmaRow::type()
 {
     return FmaType::mrow;
@@ -112,7 +122,10 @@ void FmaRow::paint(QPainter *painter)
 {
     if(children.isEmpty()){
         painter->save();
-        painter->setPen(Qt::DotLine);
+        QPen pen(Qt::DotLine);
+        pen.setWidthF(1.0);
+        pen.setCosmetic(true); // 固定 1 设备像素，放大/高 DPI 下不变粗
+        painter->setPen(pen);
         painter->drawRect(rect);
         painter->restore();
     }else{

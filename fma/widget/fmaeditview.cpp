@@ -40,7 +40,7 @@ FmaEditView::FmaEditView(QWidget *parent) : QWidget(parent)
 
 FmaEditView::~FmaEditView()
 {
-    FmaClipboard::instance.releaseClipboard();
+    // 保留系统剪贴板内容：复制后关闭视图/新建文档仍应能粘贴。
 }
 
 QToolBar *FmaEditView::createToolBar(QWidget *parent)
@@ -295,6 +295,22 @@ void FmaEditView::copy()
 
                 QMimeData* clipMime = new QMimeData;
                 clipMime->setData(FmaMime::fmaCbor, clipUnit.toCborValue().toCbor());
+                switch(FmaClipboard::format()){
+                case FmaClipboard::MathMl:{
+                    const QString mml = docPtr->toMml(clipUnit);
+                    clipMime->setData(FmaMime::fmaMml, mml.toUtf8());
+                    clipMime->setData(QStringLiteral("application/mathml+xml"), mml.toUtf8());
+                    clipMime->setText(mml);
+                    break;
+                }
+                case FmaClipboard::Tex:{
+                    const QString tex = docPtr->toTex(clipUnit);
+                    clipMime->setText(tex);
+                    break;
+                }
+                default:
+                    break;
+                }
                 FmaClipboard::instance.setMimeData(clipMime);
             }
         }
@@ -312,6 +328,22 @@ void FmaEditView::cut()
 
                 QMimeData* clipMime = new QMimeData;
                 clipMime->setData(FmaMime::fmaCbor, clipUnit.toCborValue().toCbor());
+                switch(FmaClipboard::format()){
+                case FmaClipboard::MathMl:{
+                    const QString mml = docPtr->toMml(clipUnit);
+                    clipMime->setData(FmaMime::fmaMml, mml.toUtf8());
+                    clipMime->setData(QStringLiteral("application/mathml+xml"), mml.toUtf8());
+                    clipMime->setText(mml);
+                    break;
+                }
+                case FmaClipboard::Tex:{
+                    const QString tex = docPtr->toTex(clipUnit);
+                    clipMime->setText(tex);
+                    break;
+                }
+                default:
+                    break;
+                }
                 FmaClipboard::instance.setMimeData(clipMime);
             }
             del(true);

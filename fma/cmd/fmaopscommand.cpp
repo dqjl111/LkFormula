@@ -236,7 +236,11 @@ IFmaBase* FmaOpsCommand::opFmaFence(FmaOpsCommand *cmd, const QString &, const Q
     if(fenced){
         FmaRow* curRow = cmd->doc->math.activeRow(true);
         cmd->editOps = curRow->putToActive(fenced);
-        fenced->buildIndexes(cmd->endIndexes);
+
+        // 插入括号后把光标放进括号内部，否则输入会落在括号外层并与内容重叠。
+        FmaRow* buddy = fenced->getBuddy();
+        fenced->setActiveChild(buddy);
+        buddy->buildIndexes(cmd->endIndexes);
     }
     return fenced;
 }
@@ -656,7 +660,7 @@ IFmaBase* FmaOpsCommand::opFmaDeco(FmaOpsCommand *cmd, const QString &, const QS
     }
     case 6:{
         t = new FmaOver;
-        ((FmaOver* )t)->setOver(QChar(0x2017));
+        ((FmaOver* )t)->setOver("=");
         break;
     }
     case 7:{
@@ -666,7 +670,7 @@ IFmaBase* FmaOpsCommand::opFmaDeco(FmaOpsCommand *cmd, const QString &, const QS
     }
     case 8:{
         t = new FmaUnder;
-        ((FmaUnder* )t)->setUnder(QChar(0x2017));
+        ((FmaUnder* )t)->setUnder("=");
         break;
     }
     case 9:{
@@ -701,7 +705,7 @@ IFmaBase* FmaOpsCommand::opFmaDeco(FmaOpsCommand *cmd, const QString &, const QS
     }
     case 15:{
         t = new FmaUnder;
-        ((FmaUnder* )t)->setUnder(FmaMmlTable::searchCodeByName("RightVector"));
+        ((FmaUnder* )t)->setUnder(QChar(0x21C1)); // ⇁ 下方单肩箭头，肩朝下
         break;
     }
     case 16:{

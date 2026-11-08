@@ -20,6 +20,8 @@ public:
     virtual void calculateSize() override;
     virtual void calculatePos() override;
     virtual qreal upHeight() override;
+    virtual bool isStretchX() override;
+    virtual bool isStretchY() override;
 
     virtual void paint( QPainter *painter) override;
 

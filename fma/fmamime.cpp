@@ -93,6 +93,7 @@ bool FmaMime::_canConvertFromMime(const FORMATETC &formatetc, const QMimeData *m
             if (formatetc.cfFormat == cf_fmaCbor
                     || formatetc.cfFormat == cf_fmaEmbedSource
                     || formatetc.cfFormat == cf_fmaEmbedObject
+                    || formatetc.cfFormat == cf_fmaObjectDescriptor
                     || formatetc.cfFormat == CF_METAFILEPICT
                     || formatetc.cfFormat == CF_ENHMETAFILE
                     ) {
@@ -126,7 +127,7 @@ bool FmaMime::_convertFromMime(const FORMATETC &formatetc, const QMimeData *mime
 
              HGLOBAL hData = GlobalAlloc(0, sizeof(OBJECTDESCRIPTOR));
              if (!hData){
-                 return E_OUTOFMEMORY;
+                 return false;
              }
              LPOBJECTDESCRIPTOR desc = (LPOBJECTDESCRIPTOR)GlobalLock(hData);
              //memcpy(out, cborData.data(), size_t(cborData.size()));
@@ -143,8 +144,10 @@ bool FmaMime::_convertFromMime(const FORMATETC &formatetc, const QMimeData *mime
              desc->pointl.x = 0;
              desc->pointl.y = 0;
              desc->dwStatus = 0;
-             desc->dwFullUserTypeName = sizeof(OBJECTDESCRIPTOR);
-             desc->dwSrcOfCopy = sizeof(OBJECTDESCRIPTOR);
+             // 0 表示没有字符串；非 0 是相对结构体开头的偏移，
+             // 之前写成 sizeof(OBJECTDESCRIPTOR) 会指向越界内存。
+             desc->dwFullUserTypeName = 0;
+             desc->dwSrcOfCopy = 0;
 
              GlobalUnlock(hData);
              pmedium->tymed = TYMED_HGLOBAL;
@@ -164,7 +167,8 @@ bool FmaMime::_convertFromMime(const FORMATETC &formatetc, const QMimeData *mime
              }
 
              QByteArray cborData = mimeData->data(fmaCbor);
-             return getEmbed(cborData, pmedium, formatetc.cfFormat, FmaMime::EmbedCreate);
+             // getEmbed 成功返回 S_OK(0)，直接 return 会被当成 false。
+             return getEmbed(cborData, pmedium, formatetc.cfFormat, FmaMime::EmbedCreate) == S_OK;
          }
          else if (formatetc.cfFormat == CF_METAFILEPICT) {
              QByteArray cborData = mimeData->data(fmaCbor);
@@ -228,6 +232,29 @@ QList<FORMATETC> FmaMime::_formatsForMime(const QString &mimeType, const QMimeDa
             formatetc.cfFormat = cf_fmaEmbedObject;
             ret.append(formatetc);
         }
+        // OLE 对象需要 presentation 格式，否则 OleCreateFromData 会失败。
+        {
+            FORMATETC formatetc;
+            formatetc.dwAspect = DVASPECT_CONTENT;
+            formatetc.lindex = -1;
+            formatetc.ptd = nullptr;
+
+            formatetc.tymed = TYMED_MFPICT;
+            formatetc.cfFormat = CF_METAFILEPICT;
+            ret.append(formatetc);
+        }
+#ifdef _WITH_EMF
+        {
+            FORMATETC formatetc;
+            formatetc.dwAspect = DVASPECT_CONTENT;
+            formatetc.lindex = -1;
+            formatetc.ptd = nullptr;
+
+            formatetc.tymed = TYMED_ENHMF;
+            formatetc.cfFormat = CF_ENHMETAFILE;
+            ret.append(formatetc);
+        }
+#endif
     }
     return ret;
 }
@@ -469,7 +496,7 @@ HRESULT FmaMime::getEmbed(const QByteArray &embedData, IStorage **ppStg, int cf)
     IStorage *pStg = NULL;
     hr = StgCreateDocfileOnILockBytes(
         lpLockBytes,
-        STGM_READWRITE | STGM_TRANSACTED | STGM_SHARE_EXCLUSIVE | STGM_CREATE,
+        STGM_READWRITE | STGM_SHARE_EXCLUSIVE | STGM_CREATE,
         0,	// reserved
         &pStg
     );

@@ -40,6 +40,9 @@ public:
 
     bool saveTex(const QString& filePath);
 
+    QString toMml(const QCborMap& cborMap) const;
+    QString toTex(const QCborMap& cborMap) const;
+
 
     bool saveSvg(const QString& filePath);
     const QPixmap grab();

@@ -13,6 +13,7 @@
 #include <QCborValue>
 #include <QDockWidget>
 #include "fma/widget/fmaaboutdialog.h"
+#include "fma/widget/fmaclipboard.h"
 #include "fma/widget/fmadictpanel.h"
 #include "util/nodeleter.h"
 #include "util/lktranslator.h"
@@ -191,15 +192,15 @@ void FmaMain::onAbout()
 
 void FmaMain::setClipboard()
 {
-    QInputDialog dlg;
-    dlg.setWindowTitle(tr("Clipboard settings"));
-
-    QStringList opts;
-    opts << tr("OLE") << tr("MathML") << tr("TEX");
-    dlg.setLabelText(tr("Set clipboad format: "));
-    dlg.setComboBoxItems(opts);
-    if(dlg.exec() == QInputDialog::Accepted){
-        int v = dlg.intValue();
+    const QStringList opts = { tr("OLE"), tr("MathML"), tr("TEX") };
+    bool ok = false;
+    const QString item = QInputDialog::getItem(this, tr("Clipboard settings"),
+                                               tr("Set clipboad format: "), opts,
+                                               FmaClipboard::format(), false, &ok);
+    if (ok) {
+        const int index = opts.indexOf(item);
+        if (index >= 0)
+            FmaClipboard::setFormat(index);
     }
 }
 

@@ -1144,6 +1144,9 @@ void FmaFenced::calculatePos()
             x += eb->marginLeft();
             eb->rect.moveLeft(x);
             x += eb->rect.width() + eb->marginRight();
+            if(eb == open || eb == children[0]){
+                x += 2.0;
+            }
         }
     }
 
@@ -1211,6 +1214,13 @@ void FmaFenced::calculateSize()
             height = qMax(height, eb->fullHeight());
         }
     }
+    // 括号与内部内容之间留出间距，避免第一列紧贴括号。
+    if(open){
+        width += 2.0;
+    }
+    if(close){
+        width += 2.0;
+    }
     rect.setWidth(width);
     rect.setHeight(height);
 }
@@ -1218,16 +1228,14 @@ void FmaFenced::calculateSize()
 void FmaFenced::stretchSize()
 {
     FmaBuddyBase::stretchSize();
+
+    const qreal h = rect.height() - marginTop() - marginBottom();
     if(open){
-        if(open->isStretchY()){
-            open->rect.setHeight(rect.height() - marginTop() - marginBottom());
-        }
+        open->rect.setHeight(h);
     }
 
     if(close){
-        if(close->isStretchY()){
-            close->rect.setHeight(rect.height() - marginTop() - marginBottom());
-        }
+        close->rect.setHeight(h);
     }
 }
 

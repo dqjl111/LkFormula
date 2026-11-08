@@ -134,6 +134,22 @@ bool FmaDoc::saveMml(const QString &filePath)
     return false;
 }
 
+QString FmaDoc::toMml(const QCborMap &cborMap) const
+{
+    QDomDocument doc;
+    QDomElement root = doc.createElement(FmaNodeType::toString(FmaType::math));
+    root.setAttribute("xmlns", "http://www.w3.org/1998/Math/MathML");
+    if(cborToMml(cborMap, &root, &doc)){
+        doc.appendChild(root);
+    }
+    return doc.toString();
+}
+
+QString FmaDoc::toTex(const QCborMap &cborMap) const
+{
+    return cborToTex(cborMap);
+}
+
 bool FmaDoc::loadMml(const QString &filePath)
 {
     QFile file(filePath);
